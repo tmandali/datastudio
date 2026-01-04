@@ -324,7 +324,7 @@ function WorkspaceContent() {
             ws.binaryType = "blob";
             ws.onopen = () => {
                 if (!isMounted) return;
-                addLog('system', 'Kernel Engine Bağlandı. Kernel hazırlanıyor...');
+                // Silent connection
             };
             ws.onmessage = async (event: MessageEvent) => {
                 if (!isMounted) return;
@@ -385,7 +385,7 @@ function WorkspaceContent() {
                         // Handle Ready Signal
                         if (data.type === 'status' && data.execution_state === 'ready') {
                             setWsStatus('connected');
-                            addLog('system', 'Kernel Hazır.');
+                            setActiveTab('logs');
                             return;
                         }
 
@@ -469,7 +469,6 @@ function WorkspaceContent() {
 
     const handleKernelReset = () => {
         setLogs([]); // Clear logs for a fresh start
-        addLog('system', 'Kernel sıfırlanıyor...');
         setSystemInfo(null); // Clear old info
         setRefreshKey(prev => prev + 1); // Trigger re-effect
     };
@@ -781,7 +780,7 @@ function WorkspaceContent() {
                                     onTabChange={setActiveTab}
                                     onRefreshSchema={refreshSchema}
                                     onTerminalCommand={handleTerminalCommand}
-                                    isConnected={wsStatus === 'connected'}
+                                    status={wsStatus}
                                     onConnect={handleManualConnect}
                                     onDisconnect={handleManualDisconnect}
                                     onRestart={handleKernelReset}

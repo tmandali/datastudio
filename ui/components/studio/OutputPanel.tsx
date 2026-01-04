@@ -1,6 +1,6 @@
 import React from 'react';
 import { RefreshCw, Table2, ArrowUpRight, Database, Download, Clock, CheckCircle2 } from 'lucide-react';
-import { TabType, LogEntry, TableData } from './types';
+import { TabType, LogEntry, TableData, ConnectionStatus } from './types';
 import { ConsoleView } from './ConsoleView';
 import { SystemTerminal } from './SystemTerminal';
 import { DataGrid } from './DataGrid';
@@ -17,7 +17,7 @@ interface OutputPanelProps {
     onTabChange: (tab: TabType) => void;
     onRefreshSchema: () => void;
     onTerminalCommand: (cmd: string) => void;
-    isConnected: boolean;
+    status: ConnectionStatus;
     onConnect: () => void;
     onDisconnect: () => void;
     onRestart: () => void;
@@ -34,7 +34,7 @@ export function OutputPanel({
     onTabChange,
     onRefreshSchema,
     onTerminalCommand,
-    isConnected,
+    status,
     onConnect,
     onDisconnect,
     onRestart,
@@ -122,7 +122,7 @@ export function OutputPanel({
                         <ConsoleView
                             logs={logs}
                             onCommand={onTerminalCommand}
-                            isConnected={isConnected}
+                            status={status}
                             onConnect={onConnect}
                             onDisconnect={onDisconnect}
                             isRunning={isRunning}

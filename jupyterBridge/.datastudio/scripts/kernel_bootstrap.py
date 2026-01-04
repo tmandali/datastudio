@@ -40,14 +40,9 @@ try:
         console = Console(force_terminal=True, width=120) 
         install_rich_pretty(console=console)
         
-        table = Table(title="Jupyter Kernel Status")
-        table.add_column("Component", style="cyan")
-        table.add_column("Status", style="green")
-        table.add_row("Rich", "Active")
-        table.add_row("DuckDB", "Connected")
-        console.print(table)
+        install_rich_pretty(console=console)
     except ImportError:
-        print("Rich library not found.")
+        pass
 
     # DuckDB Bağlantısı
     con = duckdb.connect(':memory:')
@@ -249,7 +244,7 @@ try:
         "session_link": "{{SESSION_LINK}}"
     }
     print(f"__SYS_INFO__{json.dumps(sys_info)}__SYS_INFO_END__")
-    print("Kernel Bootstrap Successful.")
+    pass
 
 except Exception as e:
     print(f"\n!!! KERNEL BOOTSTRAP ERROR !!!")

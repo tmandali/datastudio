@@ -2,13 +2,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { useTheme } from 'next-themes';
-import { LogEntry } from './types';
-import { RefreshCw, Power, Trash2, Cpu } from 'lucide-react';
+import { LogEntry, ConnectionStatus } from './types';
+import { RefreshCw, Cpu } from 'lucide-react';
 
 interface ConsoleViewProps {
     logs: LogEntry[];
     onCommand?: (cmd: string) => void;
-    isConnected: boolean;
+    status: ConnectionStatus;
     onConnect: () => void;
     onDisconnect: () => void;
     isRunning?: boolean;
@@ -45,11 +45,13 @@ const lightTheme = {
     white: '#ffffff',
 };
 
-export function ConsoleView({ logs, onCommand, isConnected, onConnect, onDisconnect, isRunning, onRestart }: ConsoleViewProps) {
+export function ConsoleView({ logs, onCommand, status, onConnect, onDisconnect, isRunning, onRestart }: ConsoleViewProps) {
+    const isConnected = status === 'connected';
     const containerRef = useRef<HTMLDivElement>(null);
     const terminalRef = useRef<Terminal | null>(null);
     const fitAddonRef = useRef<FitAddon | null>(null);
     const lastLogIndex = useRef<number>(0);
+    const hasPromptRef = useRef<boolean>(false);
     const { resolvedTheme } = useTheme();
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [mounted, setMounted] = useState(false);
@@ -108,18 +110,22 @@ export function ConsoleView({ logs, onCommand, isConnected, onConnect, onDisconn
         }
     };
 
-    // React to connection status changes
     useEffect(() => {
         const term = terminalRef.current;
         if (!term) return;
 
-        if (isConnected) {
-            term.write('\x1b[32m> Connected to Kernel.\x1b[0m\r\n$ ');
-            term.focus();
+        if (status === 'connected') {
+            // Bağlandığında sadece odağı konsola ver, prompt basma (log efekti halledecek)
+            setTimeout(() => {
+                term.focus();
+                term.scrollToBottom();
+            }, 100);
+        } else if (status === 'connecting') {
+            // Keep it silent or minimal during connection
         } else {
-            term.write('\r\n\x1b[31m> Disconnected from Kernel.\x1b[0m\r\n');
+            // No message needed on disconnect
         }
-    }, [isConnected]);
+    }, [status]);
 
     // Initial Setup
     useEffect(() => {
@@ -145,7 +151,7 @@ export function ConsoleView({ logs, onCommand, isConnected, onConnect, onDisconn
         fitAddonRef.current = fitAddon;
 
         if (!isConnected) {
-            term.write('\x1b[90m> Kernel disconnected. Click "Connect" to start a session.\x1b[0m\r\n');
+            // Silent init
         }
 
         if (logs.length > 0) {
@@ -271,26 +277,34 @@ export function ConsoleView({ logs, onCommand, isConnected, onConnect, onDisconn
 
         if (logs.length < lastLogIndex.current) {
             term.clear();
-            term.write('\x1b[32m> Console Cleared.\x1b[0m\r\n');
             lastLogIndex.current = 0;
-            if (isConnected) {
-                term.write('$ ');
-            }
+            hasPromptRef.current = false; // Reset prompt lock on clear
         }
 
         const newLogs = logs.slice(lastLogIndex.current);
         if (newLogs.length > 0) {
             newLogs.forEach(log => writeLog(term, log));
             lastLogIndex.current = logs.length;
+            hasPromptRef.current = false; // New logs arrive, unlock prompt
         }
 
-        // Eğer çalışma bittiyse (veya kesildiyse) ve prompt basılmadıysa, en sona prompt ekle
-        if (prevIsRunning.current && !isRunning && isConnected) {
-            // Küçük bir gecikme ekleyerek logların tamamlandığından emin olalım
-            setTimeout(() => {
-                term.write('\r\n$ ');
+        // Prompt basma mantığı: Sadece işlem bittiğinde veya terminal boşaldığında
+        const isTerminalEmpty = logs.length === 0;
+        const justFinished = prevIsRunning.current && !isRunning;
+
+        if (isConnected && !isRunning) {
+            if ((isTerminalEmpty || justFinished) && !hasPromptRef.current) {
+                hasPromptRef.current = true;
+                // Terminal boşsa yeni satır açma, doluysa (\r\n) ile yeni satıra geç
+                const prefix = isTerminalEmpty ? "" : "\r\n";
+                term.write(`${prefix}$ `);
                 term.scrollToBottom();
-            }, 50);
+            }
+        }
+
+        // İşlem başladığında prompt kilidini sıfırla
+        if (isRunning) {
+            hasPromptRef.current = false;
         }
 
         // Ref'i log işlemleri ve prompt kontrolünden SONRA güncelle
@@ -300,8 +314,7 @@ export function ConsoleView({ logs, onCommand, isConnected, onConnect, onDisconn
     const handleClear = () => {
         if (terminalRef.current) {
             terminalRef.current.clear();
-            terminalRef.current.write('\x1b[32m> Console Cleared.\x1b[0m\r\n');
-            if (isConnected) terminalRef.current.write('$ ');
+            // Prompt basma (bağlantı varsa log efekti logs=[] olduğu için zaten basacak)
         }
     };
 
@@ -310,30 +323,28 @@ export function ConsoleView({ logs, onCommand, isConnected, onConnect, onDisconn
             {/* Console Toolbar */}
             <div className="flex items-center justify-between px-3 h-9 border-b border-border/40 bg-muted/10 backdrop-blur-sm shrink-0">
                 <div className="flex items-center gap-2">
-                    <div className={`h-2 w-2 rounded-full ${isConnected ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-red-500 animate-pulse'}`} />
+                    <div className={`h-2 w-2 rounded-full ${status === 'connected' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' :
+                        status === 'connecting' ? 'bg-amber-500 animate-pulse' : 'bg-red-500'
+                        }`} />
                     <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 flex items-center gap-2">
                         <Cpu className="h-3 w-3" />
-                        Kernel Konsolu {isConnected ? '(Aktif)' : '(Çevrimdışı)'}
+                        Kernel Konsolu {
+                            status === 'connected' ? '(Aktif)' :
+                                status === 'connecting' ? '(Bağlanıyor...)' : '(Çevrimdışı)'
+                        }
                     </span>
                 </div>
                 <div className="flex items-center gap-2">
                     <button
-                        onClick={handleClear}
-                        className="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold text-muted-foreground hover:text-foreground hover:bg-muted/20 transition-all"
-                        title="Konsolu Temizle"
+                        onClick={() => {
+                            handleClear();
+                            if (onRestart) onRestart();
+                        }}
+                        className="flex items-center gap-2 px-2.5 py-1 rounded-md text-[10px] font-bold transition-all border bg-muted/20 hover:bg-muted/30 text-muted-foreground hover:text-foreground border-border/40"
+                        title="Kernel Sıfırla ve Konsolu Temizle"
                     >
-                        <Trash2 className="h-3 w-3" />
-                        TEMİZLE
-                    </button>
-                    <div className="h-4 w-[1px] bg-border/40 mx-1" />
-                    <button
-                        onClick={isConnected ? onDisconnect : onConnect}
-                        className={`flex items-center gap-2 px-2.5 py-1 rounded-md text-[10px] font-bold transition-all border ${isConnected
-                            ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 border-emerald-500/20'
-                            : 'bg-blue-600 hover:bg-blue-700 text-white border-transparent'}`}
-                    >
-                        {isConnected ? <Power className="h-3 w-3" /> : <RefreshCw className="h-3 w-3" />}
-                        {isConnected ? 'KES' : 'YENİLE'}
+                        <RefreshCw className={`h-3 w-3 ${status === 'connecting' ? 'animate-spin' : ''}`} />
+                        SIFIRLA
                     </button>
                 </div>
             </div>
