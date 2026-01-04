@@ -82,7 +82,7 @@ export function OutputPanel({
                                             <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
                                             <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 flex items-center gap-2">
                                                 <Table2 className="h-3 w-3" />
-                                                Veri Sonuçları ({activeTable.data.length} Satır)
+                                                {activeTable.data.length.toLocaleString()}
                                             </span>
                                         </div>
 

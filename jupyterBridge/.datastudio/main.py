@@ -385,209 +385,20 @@ try:
         REQUIRED_PACKAGES = [line.strip() for line in f if line.strip()]
 except Exception as e:
     print(f"Warning: Could not read requirements.txt: {e}")
-    REQUIRED_PACKAGES = ["duckdb", "pandas", "pyarrow", "rich", "jinja2"]
+    REQUIRED_PACKAGES = ["duckdb", "pyarrow", "rich", "jinja2"]
 
 # --- DUCKDB ENTEGRELİ BOOTSTRAP ---
-INSTALLER_CODE = """
-import sys
-import subprocess
-import os
-
-required_packages = {{REQUIRED_PACKAGES}}
-if required_packages:
+# --- KERNEL SCRIPTS LOADER ---
+def get_bootstrap_code():
+    script_path = os.path.join(os.path.dirname(__file__), "scripts", "kernel_bootstrap.py")
     try:
-        # Pip'i sessiz modda çalıştır ve 'zaten yüklü' mesajlarını gizle
-        subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", "-q", "--disable-pip-version-check", *required_packages],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.STDOUT
-        )
-    except Exception:
-        # Eğer bir hata olursa sessizce devam et veya istersen logla
-        pass
-"""
+        with open(script_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except Exception as e:
+        print(f"Error loading bootstrap script: {e}")
+        return "# Error loading bootstrap script"
 
-BOOTSTRAP_CODE = INSTALLER_CODE + """
-import sys
-import traceback
-
-try:
-    import pyarrow as pa
-    import pandas as pd
-    import duckdb
-    import io
-    from IPython import get_ipython
-    from IPython.display import display
-    
-    # Rich Configuration
-    try:
-        from rich import print as rprint
-        from rich.console import Console
-        from rich.pretty import install as install_rich_pretty
-        from rich.traceback import install as install_rich_traceback
-        
-        # Force terminal for colors in xterm.js
-        console = Console(force_terminal=True, width=120) 
-        
-        # Install pretty printing
-        install_rich_pretty(console=console)
-        # install_rich_traceback(console=console) # Disable to avoid conflict with IPython error reporting
-        
-        from rich.table import Table
-        table = Table(title="Jupyter Kernel Status")
-        table.add_column("Component", style="cyan")
-        table.add_column("Status", style="green")
-        table.add_row("Rich", "Active")
-        table.add_row("DuckDB", "Connected")
-        console.print(table)
-    except ImportError:
-        print("Rich library not found (run 'pip install rich' to enable).")
-
-
-    # DuckDB bağlantısını global olarak başlat
-    con = duckdb.connect(':memory:')
-
-    class ArrowWrapper:
-        def __init__(self, obj):
-            if isinstance(obj, pd.DataFrame):
-                self.table = pa.Table.from_pandas(obj)
-            else:
-                self.table = obj
-        def _repr_mimebundle_(self, include=None, exclude=None):
-            sink = io.BytesIO()
-            with pa.ipc.new_stream(sink, self.table.schema) as writer:
-                writer.write_table(self.table)
-            return {'application/vnd.apache.arrow.stream': sink.getvalue()}
-
-    # SQL çalıştırma yardımcısı
-    def execute_sql_query(query):
-        import sys
-        import time
-        from datetime import datetime
-        
-        # Sorguyu noktalı virgüllere göre ayır ve sadece gerçek kod içerenleri al
-        raw_statements = [s.strip() for s in query.split(';') if s.strip()]
-        statements = []
-        for s in raw_statements:
-            # Yorum satırlarını temizleyip gerçekten çalışacak kod kalıp kalmadığına bak
-            lines = [l.strip() for l in s.split('\n')]
-            code_lines = [l for l in lines if l and not l.startswith('--') and not l.startswith('#')]
-            if code_lines:
-                statements = raw_statements # Orijinal halini koru ama filtreleme için kullanıldı
-                break
-        
-        # Daha kesin bir filtreleme yapalım
-        def is_real_code(s):
-            # Basitçe: -- ile başlamayan veya sadece boşluk/yorum olmayan
-            lines = s.split('\n')
-            for l in lines:
-                l = l.strip()
-                if l and not l.startswith('--') and not l.startswith('#') and not (l.startswith('/*') and l.endswith('*/')):
-                    return True
-            return False
-
-        statements = [s for s in raw_statements if is_real_code(s)]
-        
-        if not statements:
-            print("\\x1b[33m[UYARI]\\x1b[0m Çalıştırılacak SQL ifadesi bulunamadı.", flush=True)
-            return
-
-        total = len(statements)
-        last_result_df = None
-        start_time_all = time.time()
-        
-        print(f"\\n\\x1b[35;1m▶ SQL Script İşleme Başlatıldı ({total} Adım)\\x1b[0m", flush=True)
-        print("\\x1b[90m" + "─" * 50 + "\\x1b[0m", flush=True)
-
-        for i, stmt in enumerate(statements):
-            idx = i + 1
-            now = datetime.now().strftime("%H:%M:%S")
-            
-            # Sorgu özeti
-            short_stmt = stmt.replace('\\n', ' ').strip()
-            if len(short_stmt) > 60:
-                short_stmt = short_stmt[:57] + "..."
-            
-            # BAŞLIYOR
-            print(f"\\x1b[34m[{now}] [{idx}/{total}]\\x1b[0m \\x1b[1mÇALIŞTIRILIYOR:\\x1b[0m {short_stmt}", flush=True)
-            
-            step_start = time.time()
-            try:
-                # DuckDB Execution
-                rel = con.sql(stmt)
-                duration = time.time() - step_start
-                
-                if rel is None:
-                    print(f"\\x1b[32m  ✔ BAŞARILI\\x1b[0m ({duration:.3f} sn)", flush=True)
-                else:
-                    # Check if it's a result set
-                    if rel.description is None or len(rel.description) == 0:
-                        print(f"\\x1b[32m  ✔ BAŞARILI\\x1b[0m ({duration:.3f} sn)", flush=True)
-                    else:
-                        res_df = rel.df()
-                        rows = len(res_df)
-                        print(f"\\x1b[32m  ✔ SONUÇ:\\x1b[0m {rows} satır ({duration:.3f} sn)", flush=True)
-                        # Sadece son sonucu sakla
-                        last_result_df = res_df
-                
-                # Adımlar arasında çok kısa bir boşluk bırak
-                time.sleep(0.1)
-                
-            except Exception as e:
-                duration = time.time() - step_start
-                print(f"\\x1b[31m  ✘ HATA\\x1b[0m ({duration:.3f} sn): {str(e)}", flush=True)
-                print("\\x1b[31;1m(!) İşlem durduruldu.\\x1b[0m", flush=True)
-                break
-            
-            if idx < total:
-                print("\\x1b[90m" + "  " + "·" * 20 + "\\x1b[0m", flush=True)
-
-        # Tüm adımlar bittikten sonra, eğer bir sonuç kümesi elde edildiyse SADECE SONUNCUYU display et
-        if last_result_df is not None:
-            display(ArrowWrapper(last_result_df))
-
-        total_duration = time.time() - start_time_all
-        print("\\x1b[90m" + "─" * 50 + "\\x1b[0m", flush=True)
-        print(f"\\x1b[35;1m■ Tamamlandı.\\x1b[0m Toplam Süre: {total_duration:.3f} sn\\n", flush=True)
-
-    ip = get_ipython()
-    import platform
-    import psutil
-    import json
-    
-    sys_info = {
-        "python": platform.python_version(),
-        "os": f"{platform.system()} {platform.release()}",
-        "ram_total": f"{round(psutil.virtual_memory().total / (1024**3), 2)} GB",
-        "ram_available": f"{round(psutil.virtual_memory().available / (1024**3), 2)} GB",
-        "processor": platform.processor(),
-        "kernel_id": "{{KERNEL_ID}}",
-        "session_id": "{{SESSION_ID}}",
-        "jupyter_url": "{{JUPYTER_URL}}",
-        "session_link": "{{SESSION_LINK}}"
-    }
-    print(f"__SYS_INFO__{json.dumps(sys_info)}__SYS_INFO_END__")
-    
-    # Monkey-patch DataFrame to return Arrow stream by default
-    def custom_mimebundle(self, include=None, exclude=None):
-        return ArrowWrapper(self)._repr_mimebundle_(include, exclude)
-    
-    pd.DataFrame._repr_mimebundle_ = custom_mimebundle
-    # pa.Table already has good Arrow support, but we can wrap it if needed
-    # pa.Table._repr_mimebundle_ = custom_mimebundle
-    
-    print("Kernel Bootstrap Successful.")
-
-except ImportError as e:
-    print(f"\\n!!! KERNEL ERROR (Missing Libraries) !!!")
-    print(f"The Jupyter Kernel is missing required libraries: {e}")
-    print("Please run this command in the terminal where you started 'jupyter lab':")
-    print("    pip install duckdb pandas pyarrow")
-    print(f"Full error: {e}\\n")
-except Exception as e:
-    print(f"\\n!!! KERNEL BOOTSTRAP ERROR !!!")
-    traceback.print_exc()
-"""
+BOOTSTRAP_CODE = get_bootstrap_code()
 
 @app.websocket("/ws/execute")
 async def execute_code(websocket: WebSocket, workspace: str = None):
@@ -669,7 +480,7 @@ async def execute_code(websocket: WebSocket, workspace: str = None):
                         ws_reqs = [line.strip() for line in f if line.strip() and not line.startswith("#")]
                 except: pass
 
-        injected_bootstrap = BOOTSTRAP_CODE.replace("{{KERNEL_ID}}", kernel_id)\
+        injected_bootstrap = get_bootstrap_code().replace("{{KERNEL_ID}}", kernel_id)\
                                           .replace("{{SESSION_ID}}", session_id)\
                                           .replace("{{JUPYTER_URL}}", JUPYTER_URL)\
                                           .replace("{{SESSION_LINK}}", session_link)\

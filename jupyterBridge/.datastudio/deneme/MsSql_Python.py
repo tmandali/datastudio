@@ -7,11 +7,12 @@ conn = mssql_python.connect(connection_string)
 conn.setdecoding(mssql_python.SQL_CHAR, encoding='utf-8')
 
 # One-off query with automatic cleanup
-row = conn.execute("SELECT first_name FROM users WHERE id = ?", 123).fetchone()
-print("User name:", row[0])
+# row = conn.execute("SELECT first_name FROM users WHERE id = ?", 123).fetchone()
+# print("User name:", row[0])
 
 # Explicit resource management for large result sets
-# cursor = conn.execute("SELECT top 1000 * FROM users")
+cursor = conn.execute("SELECT * FROM users")
+stream(cursor)
 # try:
 #     rows = cursor.fetchall()
 #     for row in rows:

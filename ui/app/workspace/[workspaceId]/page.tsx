@@ -49,6 +49,7 @@ function WorkspaceContent() {
     const contentCacheRef = useRef<Record<string, string>>({});
     const editorRef = useRef<EditorHandle>(null);
     const startTimeRef = useRef<number>(0);
+    const hasAutoSwitchedToTableRef = useRef<boolean>(false);
 
     const addLog = useCallback((type: LogEntry['type'], content: unknown): void => {
         const safeContent = (content && typeof content === 'object') ? JSON.stringify(content) : String(content || "");
@@ -331,7 +332,6 @@ function WorkspaceContent() {
                         const buffer = await event.data.arrayBuffer();
                         const { tableFromIPC } = await import('apache-arrow');
                         const table = tableFromIPC(new Uint8Array(buffer));
-                        addLog('system', `Veri Tablosu Alındı: ${table.numRows} satır, ${table.numCols} sütun.`);
 
                         const columns = table.schema.fields.map(f => f.name);
                         const data: Record<string, unknown>[] = [];
@@ -354,8 +354,24 @@ function WorkspaceContent() {
 
                         const formattedTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(ms).padStart(3, '0')}`;
 
-                        setActiveTable({ columns, data, executionTime: formattedTime });
-                        setActiveTab('table');
+                        setActiveTable(prev => {
+                            // Eğer önceki veri yoksa veya kolon yapısı değiştiyse yeni tablo oluştur
+                            if (!prev || JSON.stringify(prev.columns) !== JSON.stringify(columns)) {
+                                return { columns, data, executionTime: formattedTime };
+                            }
+                            // Aynı yapıdaysa veriyi sona ekle (Streaming/Append)
+                            return {
+                                ...prev,
+                                data: [...prev.data, ...data],
+                                executionTime: formattedTime
+                            };
+                        });
+
+                        // Sadece ilk pakette tabloya otomatik geç, sonra kullanıcıyı serbest bırak
+                        if (!hasAutoSwitchedToTableRef.current) {
+                            hasAutoSwitchedToTableRef.current = true;
+                            setActiveTab('table');
+                        }
                     } catch (e) {
                         addLog('error', 'Veri paketlenirken hata oluştu.');
                         console.error(e);
@@ -469,6 +485,7 @@ function WorkspaceContent() {
         setLogs([]);
         setHasExecutionError(false);
         setActiveTable(null);
+        hasAutoSwitchedToTableRef.current = false; // Reset for new run
         setIsRunning(true);
         startTimeRef.current = performance.now();
         addLog('system', `Çalıştırılıyor: ${activeFile.name} ${selection ? '(Seçili Alan)' : ''}`);
@@ -488,6 +505,7 @@ function WorkspaceContent() {
         setLogs([]);
         setHasExecutionError(false);
         setActiveTable(null);
+        hasAutoSwitchedToTableRef.current = false; // Reset for new run
         setIsRunning(true);
         startTimeRef.current = performance.now();
         addLog('system', `Bağımsız sorgu çalıştırılıyor...`);
