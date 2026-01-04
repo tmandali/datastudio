@@ -9,4 +9,9 @@ SELECT '{{user_id}}' as current_user, '{{date}}' as execution_date;
 
 select * from duckdb_logs;
 
-SELECT name FROM sqlite_master;
+SELECT * FROM sqlite_master;
+
+CREATE TABLE IF NOT EXISTS deneme (
+    kod INTEGER PRIMARY KEY,
+    tanim TEXT
+);

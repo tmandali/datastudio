@@ -391,22 +391,20 @@ except Exception as e:
 INSTALLER_CODE = """
 import sys
 import subprocess
-import importlib.util
+import os
 
 required_packages = {{REQUIRED_PACKAGES}}
-missing = []
-
-for pkg in required_packages:
-    if importlib.util.find_spec(pkg) is None:
-        missing.append(pkg)
-
-if missing:
-    print(f"Installing missing kernel packages: {{missing}}...")
+if required_packages:
     try:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", *missing])
-        print("Installation complete.")
-    except Exception as e:
-        print(f"Failed to install packages: {{e}}")
+        # Pip'i sessiz modda çalıştır ve 'zaten yüklü' mesajlarını gizle
+        subprocess.check_call(
+            [sys.executable, "-m", "pip", "install", "-q", "--disable-pip-version-check", *required_packages],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.STDOUT
+        )
+    except Exception:
+        # Eğer bir hata olursa sessizce devam et veya istersen logla
+        pass
 """
 
 BOOTSTRAP_CODE = INSTALLER_CODE + """
@@ -463,20 +461,94 @@ try:
 
     # SQL çalıştırma yardımcısı
     def execute_sql_query(query):
-        # duckdb.sql() yerel scope'taki DataFrame'leri otomatik görür
-        rel = con.sql(query)
-        if rel is None:
-            print("İşlem başarıyla tamamlandı.")
+        import sys
+        import time
+        from datetime import datetime
+        
+        # Sorguyu noktalı virgüllere göre ayır ve sadece gerçek kod içerenleri al
+        raw_statements = [s.strip() for s in query.split(';') if s.strip()]
+        statements = []
+        for s in raw_statements:
+            # Yorum satırlarını temizleyip gerçekten çalışacak kod kalıp kalmadığına bak
+            lines = [l.strip() for l in s.split('\n')]
+            code_lines = [l for l in lines if l and not l.startswith('--') and not l.startswith('#')]
+            if code_lines:
+                statements = raw_statements # Orijinal halini koru ama filtreleme için kullanıldı
+                break
+        
+        # Daha kesin bir filtreleme yapalım
+        def is_real_code(s):
+            # Basitçe: -- ile başlamayan veya sadece boşluk/yorum olmayan
+            lines = s.split('\n')
+            for l in lines:
+                l = l.strip()
+                if l and not l.startswith('--') and not l.startswith('#') and not (l.startswith('/*') and l.endswith('*/')):
+                    return True
+            return False
+
+        statements = [s for s in raw_statements if is_real_code(s)]
+        
+        if not statements:
+            print("\\x1b[33m[UYARI]\\x1b[0m Çalıştırılacak SQL ifadesi bulunamadı.", flush=True)
             return
 
-        # Check if it's a statement that returns rows (rel.description check)
-        if rel.description is None or len(rel.description) == 0:
-            print("İşlem başarıyla tamamlandı.")
-        else:
-            res_df = rel.df()
-            display(ArrowWrapper(res_df))
-            if res_df.empty:
-                print("İşlem başarılı, sonuç kümesi boş.")
+        total = len(statements)
+        last_result_df = None
+        start_time_all = time.time()
+        
+        print(f"\\n\\x1b[35;1m▶ SQL Script İşleme Başlatıldı ({total} Adım)\\x1b[0m", flush=True)
+        print("\\x1b[90m" + "─" * 50 + "\\x1b[0m", flush=True)
+
+        for i, stmt in enumerate(statements):
+            idx = i + 1
+            now = datetime.now().strftime("%H:%M:%S")
+            
+            # Sorgu özeti
+            short_stmt = stmt.replace('\\n', ' ').strip()
+            if len(short_stmt) > 60:
+                short_stmt = short_stmt[:57] + "..."
+            
+            # BAŞLIYOR
+            print(f"\\x1b[34m[{now}] [{idx}/{total}]\\x1b[0m \\x1b[1mÇALIŞTIRILIYOR:\\x1b[0m {short_stmt}", flush=True)
+            
+            step_start = time.time()
+            try:
+                # DuckDB Execution
+                rel = con.sql(stmt)
+                duration = time.time() - step_start
+                
+                if rel is None:
+                    print(f"\\x1b[32m  ✔ BAŞARILI\\x1b[0m ({duration:.3f} sn)", flush=True)
+                else:
+                    # Check if it's a result set
+                    if rel.description is None or len(rel.description) == 0:
+                        print(f"\\x1b[32m  ✔ BAŞARILI\\x1b[0m ({duration:.3f} sn)", flush=True)
+                    else:
+                        res_df = rel.df()
+                        rows = len(res_df)
+                        print(f"\\x1b[32m  ✔ SONUÇ:\\x1b[0m {rows} satır ({duration:.3f} sn)", flush=True)
+                        # Sadece son sonucu sakla
+                        last_result_df = res_df
+                
+                # Adımlar arasında çok kısa bir boşluk bırak
+                time.sleep(0.1)
+                
+            except Exception as e:
+                duration = time.time() - step_start
+                print(f"\\x1b[31m  ✘ HATA\\x1b[0m ({duration:.3f} sn): {str(e)}", flush=True)
+                print("\\x1b[31;1m(!) İşlem durduruldu.\\x1b[0m", flush=True)
+                break
+            
+            if idx < total:
+                print("\\x1b[90m" + "  " + "·" * 20 + "\\x1b[0m", flush=True)
+
+        # Tüm adımlar bittikten sonra, eğer bir sonuç kümesi elde edildiyse SADECE SONUNCUYU display et
+        if last_result_df is not None:
+            display(ArrowWrapper(last_result_df))
+
+        total_duration = time.time() - start_time_all
+        print("\\x1b[90m" + "─" * 50 + "\\x1b[0m", flush=True)
+        print(f"\\x1b[35;1m■ Tamamlandı.\\x1b[0m Toplam Süre: {total_duration:.3f} sn\\n", flush=True)
 
     ip = get_ipython()
     import platform
