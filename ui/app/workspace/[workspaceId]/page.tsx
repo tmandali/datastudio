@@ -34,6 +34,7 @@ function WorkspaceContent() {
 
     const [activeTab, setActiveTab] = useState<TabType>('logs');
     const [isRunning, setIsRunning] = useState(false);
+    const [isStopping, setIsStopping] = useState(false);
     const [wsStatus, setWsStatus] = useState<ConnectionStatus>('connecting');
     const [availableTables, setAvailableTables] = useState<string[]>([]);
     const [isRefreshingSchema, setIsRefreshingSchema] = useState(false);
@@ -408,6 +409,7 @@ function WorkspaceContent() {
                             setActiveTab('logs');
                         } else if (data.type === 'done') {
                             setIsRunning(false);
+                            setIsStopping(false);
                         }
                     } catch (e) {
                         console.error("Message handling error:", e);
@@ -487,6 +489,7 @@ function WorkspaceContent() {
         setActiveTable(null);
         hasAutoSwitchedToTableRef.current = false; // Reset for new run
         setIsRunning(true);
+        setIsStopping(false);
         startTimeRef.current = performance.now();
         addLog('system', `Çalıştırılıyor: ${activeFile.name} ${selection ? '(Seçili Alan)' : ''}`);
 
@@ -507,6 +510,7 @@ function WorkspaceContent() {
         setActiveTable(null);
         hasAutoSwitchedToTableRef.current = false; // Reset for new run
         setIsRunning(true);
+        setIsStopping(false);
         startTimeRef.current = performance.now();
         addLog('system', `Bağımsız sorgu çalıştırılıyor...`);
 
@@ -736,15 +740,20 @@ function WorkspaceContent() {
                                         <div className="h-4 w-[1px] bg-border/40 mx-1" />
 
                                         <button
-                                            onClick={isRunning ? () => socketRef.current?.send(JSON.stringify({ action: 'interrupt' })) : runCode}
-                                            disabled={!isRunning && wsStatus !== 'connected'}
+                                            onClick={isRunning ? () => {
+                                                setIsStopping(true);
+                                                socketRef.current?.send(JSON.stringify({ action: 'interrupt' }));
+                                            } : runCode}
+                                            disabled={(!isRunning && wsStatus !== 'connected') || isStopping}
                                             className={`flex items-center gap-2 px-2.5 py-1 rounded-md text-[10px] font-bold transition-all border ${isRunning
-                                                ? 'bg-red-500/10 hover:bg-red-500/20 text-red-600 border-red-500/20 animate-pulse'
+                                                ? isStopping
+                                                    ? 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+                                                    : 'bg-red-500/10 hover:bg-red-500/20 text-red-600 border-red-500/20 animate-pulse'
                                                 : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 border-emerald-500/20'}`}
-                                            title={isRunning ? "Durdur" : "Çalıştır (Cmd+Enter)"}
+                                            title={isRunning ? (isStopping ? "Durduruluyor..." : "Durdur") : "Çalıştır (Cmd+Enter)"}
                                         >
-                                            {isRunning ? <Square className="h-3 w-3 fill-current" /> : <Play className="h-3 w-3 fill-current" />}
-                                            {isRunning ? 'DURDUR' : 'ÇALIŞTIR'}
+                                            {isRunning ? <Square className={cn("h-3 w-3 fill-current", isStopping && "animate-spin")} /> : <Play className="h-3 w-3 fill-current" />}
+                                            {isRunning ? (isStopping ? 'DURDURULUYOR...' : 'DURDUR') : 'ÇALIŞTIR'}
                                         </button>
                                     </div>
                                 </div>

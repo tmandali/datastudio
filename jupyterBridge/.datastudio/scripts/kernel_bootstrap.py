@@ -79,8 +79,24 @@ try:
         '''
         batches = []
         total_rows = 0
+        start_time = time.time()
         
         try:
+            from rich.panel import Panel
+            from rich.text import Text
+            from rich.table import Table
+            
+            if not silent:
+                # ANSI Renk Kodları
+                C_CYAN = "\033[96m"
+                C_GREEN = "\033[92m"
+                C_YELLOW = "\033[93m"
+                C_DIM = "\033[90m"
+                C_BOLD = "\033[1m"
+                C_END = "\033[0m"
+                
+                print(f"\n{C_BOLD}{C_CYAN}➜{C_END} {C_BOLD}Akış Başlatıldı:{C_END} {name if name else 'Adsız Veri'}", flush=True)
+
             # 1. DuckDB Relation Tespiti
             if hasattr(obj, 'record_batch_reader'):
                 if silent and name:
@@ -92,13 +108,17 @@ try:
                     if not silent: display(ArrowWrapper(batch))
                     if name: batches.append(batch)
                     total_rows += len(batch)
+                    
+                    if not silent and (total_rows % batch_size == 0):
+                        elapsed = time.time() - start_time
+                        rate = total_rows / elapsed if elapsed > 0 else 0
+                        print(f"   {C_DIM}..{C_END} {C_CYAN}{total_rows:,}{C_END} satır aktarıldı {C_DIM}({rate:,.0f} rows/sec){C_END}", flush=True)
                 
                 if name and batches:
                     con.register(name, pa.Table.from_batches(batches))
-                return
-
+                
             # 2. Standart Cursor (mssql_python, sqlite3 vb.)
-            if hasattr(obj, 'fetchmany') and hasattr(obj, 'description'):
+            elif hasattr(obj, 'fetchmany') and hasattr(obj, 'description'):
                 cursor = obj
                 col_names = [col[0].lower() for col in cursor.description]
                 
@@ -114,17 +134,32 @@ try:
                     
                     if not silent: display(ArrowWrapper(batch))
                     if name: batches.append(batch)
+                    
+                    if not silent:
+                        elapsed = time.time() - start_time
+                        rate = total_rows / elapsed if elapsed > 0 else 0
+                        print(f"   {C_GREEN}➜{C_END} {C_BOLD}{total_rows:,}{C_END} satır işlendi {C_DIM}({rate:,.0f} rows/sec){C_END}", flush=True)
                 
                 if name and batches:
                     con.register(name, pa.Table.from_batches(batches))
-                    print(f"\x1b[32m✔ '{name}' tablosu {total_rows} satırla hazır.\x1b[0m", flush=True)
-                return
-                
+            
             # 3. Genel Obje (Arrow Table, RecordBatch vb.)
-            if not silent: display(ArrowWrapper(obj))
-            if name:
-                wrapped = ArrowWrapper(obj)
-                con.register(name, wrapped.table)
+            else:
+                if not silent: display(ArrowWrapper(obj))
+                if name:
+                    wrapped = ArrowWrapper(obj)
+                    con.register(name, wrapped.table)
+                total_rows = len(obj) if hasattr(obj, '__len__') else 1
+
+            # Bitiş Özeti
+            if not silent:
+                elapsed = time.time() - start_time
+                print(f"\n{C_GREEN}✔ AKIŞ TAMAMLANDI{C_END}", flush=True)
+                print(f"  {C_DIM}•{C_END} Toplam Satır: {total_rows:,}", flush=True)
+                print(f"  {C_DIM}•{C_END} Toplam Süre : {elapsed:.2f} sn", flush=True)
+                if name: print(f"  {C_DIM}•{C_END} DuckDB Kayıt: {name}", flush=True)
+                print(f"{C_DIM}{'─' * 40}{C_END}\n", flush=True)
+
                 
         except KeyboardInterrupt:
             print(f"\n\x1b[33m[!] Akış kullanıcı tarafından kesildi.\x1b[0m", flush=True)

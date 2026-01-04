@@ -139,6 +139,16 @@
   body {
     @apply bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary;
   }
+
+  button, 
+  [role="button"],
+  .cursor-pointer,
+  select,
+  input[type="submit"],
+  input[type="button"],
+  input[type="reset"] {
+    cursor: pointer;
+  }
 }
 
 /* Scrollbar Styling */
