@@ -1,0 +1,13 @@
+{
+    "mcpServers": {
+        "shadcn": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "shadcn@latest",
+                "mcp"
+            ],
+            "cwd": "/Users/tmr/Source/datastudio/ui"
+        }
+    }
+}

@@ -1,0 +1,20 @@
+# System
+.DS_Store
+
+# User Env
+.env
+.venv
+venv/
+__pycache__/
+*.pyc
+
+# Frontend specific (if not handled by nested, but good to have global patterns)
+node_modules/
+.next/
+out/
+build/
+dist/
+
+# Backend specific
+jupyterBridge/.env
+jupyterBridge/.venv
