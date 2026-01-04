@@ -468,6 +468,7 @@ function WorkspaceContent() {
 
         setLogs([]);
         setHasExecutionError(false);
+        setActiveTable(null);
         setIsRunning(true);
         startTimeRef.current = performance.now();
         addLog('system', `Çalıştırılıyor: ${activeFile.name} ${selection ? '(Seçili Alan)' : ''}`);
@@ -486,6 +487,7 @@ function WorkspaceContent() {
 
         setLogs([]);
         setHasExecutionError(false);
+        setActiveTable(null);
         setIsRunning(true);
         startTimeRef.current = performance.now();
         addLog('system', `Bağımsız sorgu çalıştırılıyor...`);
@@ -504,6 +506,7 @@ function WorkspaceContent() {
         }
 
         setHasExecutionError(false);
+        setActiveTable(null);
         setIsRunning(true);
         socketRef.current.send(JSON.stringify({
             action: 'execute',

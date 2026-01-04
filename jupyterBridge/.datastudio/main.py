@@ -474,10 +474,9 @@ try:
             print("İşlem başarıyla tamamlandı.")
         else:
             res_df = rel.df()
+            display(ArrowWrapper(res_df))
             if res_df.empty:
                 print("İşlem başarılı, sonuç kümesi boş.")
-            else:
-                display(ArrowWrapper(res_df))
 
     ip = get_ipython()
     import platform
