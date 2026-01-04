@@ -140,7 +140,7 @@
     @apply bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary;
   }
 
-  button, 
+  button,
   [role="button"],
   .cursor-pointer,
   select,
@@ -148,6 +148,14 @@
   input[type="button"],
   input[type="reset"] {
     cursor: pointer;
+  }
+
+  button:disabled,
+  [role="button"]:disabled,
+  .cursor-not-allowed {
+    cursor: not-allowed !important;
+    opacity: 0.6;
+    pointer-events: none;
   }
 }
 

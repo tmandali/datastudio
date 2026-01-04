@@ -56,6 +56,11 @@ export function ConsoleView({ logs, onCommand, isConnected, onConnect, onDisconn
 
     // Track previous isRunning state to detect completion
     const prevIsRunning = useRef(isRunning);
+    const isRunningRef = useRef(isRunning);
+
+    useEffect(() => {
+        isRunningRef.current = isRunning;
+    }, [isRunning]);
 
     useEffect(() => {
         setMounted(true);
@@ -92,9 +97,15 @@ export function ConsoleView({ logs, onCommand, isConnected, onConnect, onDisconn
         // }
 
         // Normalize to CRLF
-        content = content.replace(/\r?\n/g, '\r\n');
+        const normalizedContent = content.replace(/\r?\n/g, '\r\n');
 
-        term.write(`${time} ${color}${content}\x1b[0m\r\n`);
+        // Eğer içerik '\r' ile başlıyorsa, bu bir ilerleme güncellemesidir.
+        // Zaman damgası ve yeni satır eklemeden doğrudan yazdır.
+        if (content.startsWith('\r')) {
+            term.write(normalizedContent);
+        } else {
+            term.write(`${time} ${color}${normalizedContent}\x1b[0m\r\n`);
+        }
     };
 
     // React to connection status changes
@@ -109,17 +120,6 @@ export function ConsoleView({ logs, onCommand, isConnected, onConnect, onDisconn
             term.write('\r\n\x1b[31m> Disconnected from Kernel.\x1b[0m\r\n');
         }
     }, [isConnected]);
-
-    // Handle isRunning changes (Prompt logic)
-    useEffect(() => {
-        const term = terminalRef.current;
-        if (!term) return;
-
-        if (prevIsRunning.current && !isRunning && isConnected) {
-            term.write('$ ');
-        }
-        prevIsRunning.current = isRunning;
-    }, [isRunning, isConnected]);
 
     // Initial Setup
     useEffect(() => {
@@ -193,6 +193,8 @@ export function ConsoleView({ logs, onCommand, isConnected, onConnect, onDisconn
 
         const disposable = term.onData((data) => {
             if (!isConnectedRef.current) return;
+            if (isRunningRef.current) return; // Akış sırasında girdi engelle
+
             try {
                 const safeData = String(data);
                 if (!safeData) return;
@@ -281,7 +283,19 @@ export function ConsoleView({ logs, onCommand, isConnected, onConnect, onDisconn
             newLogs.forEach(log => writeLog(term, log));
             lastLogIndex.current = logs.length;
         }
-    }, [logs, isConnected]);
+
+        // Eğer çalışma bittiyse (veya kesildiyse) ve prompt basılmadıysa, en sona prompt ekle
+        if (prevIsRunning.current && !isRunning && isConnected) {
+            // Küçük bir gecikme ekleyerek logların tamamlandığından emin olalım
+            setTimeout(() => {
+                term.write('\r\n$ ');
+                term.scrollToBottom();
+            }, 50);
+        }
+
+        // Ref'i log işlemleri ve prompt kontrolünden SONRA güncelle
+        prevIsRunning.current = isRunning;
+    }, [logs, isConnected, isRunning]);
 
     const handleClear = () => {
         if (terminalRef.current) {

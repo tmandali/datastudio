@@ -112,7 +112,8 @@ try:
                     if not silent and (total_rows % batch_size == 0):
                         elapsed = time.time() - start_time
                         rate = total_rows / elapsed if elapsed > 0 else 0
-                        print(f"   {C_DIM}..{C_END} {C_CYAN}{total_rows:,}{C_END} satır aktarıldı {C_DIM}({rate:,.0f} rows/sec){C_END}", flush=True)
+                        # \r kullanarak aynı satırda güncelleme yap
+                        print(f"\r   {C_DIM}..{C_END} {C_CYAN}{total_rows:,}{C_END} satır aktarıldı {C_DIM}({rate:,.0f} rows/sec){C_END}", end="", flush=True)
                 
                 if name and batches:
                     con.register(name, pa.Table.from_batches(batches))
@@ -138,7 +139,8 @@ try:
                     if not silent:
                         elapsed = time.time() - start_time
                         rate = total_rows / elapsed if elapsed > 0 else 0
-                        print(f"   {C_GREEN}➜{C_END} {C_BOLD}{total_rows:,}{C_END} satır işlendi {C_DIM}({rate:,.0f} rows/sec){C_END}", flush=True)
+                        # \r kullanarak aynı satırda güncelleme yap
+                        print(f"\r   {C_GREEN}➜{C_END} {C_BOLD}{total_rows:,}{C_END} satır işlendi {C_DIM}({rate:,.0f} rows/sec){C_END}", end="", flush=True)
                 
                 if name and batches:
                     con.register(name, pa.Table.from_batches(batches))
@@ -154,11 +156,12 @@ try:
             # Bitiş Özeti
             if not silent:
                 elapsed = time.time() - start_time
+                print() # Önceki \r satırını bitirmek için yeni satıra geç
                 print(f"\n{C_GREEN}✔ AKIŞ TAMAMLANDI{C_END}", flush=True)
                 print(f"  {C_DIM}•{C_END} Toplam Satır: {total_rows:,}", flush=True)
                 print(f"  {C_DIM}•{C_END} Toplam Süre : {elapsed:.2f} sn", flush=True)
-                if name: print(f"  {C_DIM}•{C_END} DuckDB Kayıt: {name}", flush=True)
-                print(f"{C_DIM}{'─' * 40}{C_END}\n", flush=True)
+                if name: print(f"  {C_DIM}•{C_END} Tablo: {name}", flush=True)
+                # print(f"{C_DIM}{'─' * 40}{C_END}\n", flush=True)
 
                 
         except KeyboardInterrupt:
