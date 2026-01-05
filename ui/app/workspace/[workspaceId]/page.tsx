@@ -64,10 +64,11 @@ function WorkspaceContent() {
     const [files, setFiles] = useState<ProjectFile[]>([]);
     const [activeFileId, setActiveFileId] = useState<string>('');
     const API_BASE = (process.env.NEXT_PUBLIC_WEBSOCKET_URL || "ws://localhost:8000").replace("ws://", "http://").replace("wss://", "https://").split('/ws')[0];
+    const WORKSPACES_ROOT = process.env.NEXT_PUBLIC_WORKSPACES_ROOT || ".datastudio/workspaces";
 
     const fetchFiles = useCallback(async () => {
         try {
-            const rootPath = currentWorkspace ? `.datastudio/${currentWorkspace}` : "";
+            const rootPath = currentWorkspace ? `${WORKSPACES_ROOT}/${currentWorkspace}` : "";
             const res = await fetch(`${API_BASE}/api/files?path=${rootPath}`);
             const data = await res.json();
             if (data.files) {
