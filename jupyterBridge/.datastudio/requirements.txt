@@ -2,3 +2,10 @@ duckdb
 pandas
 pyarrow
 rich
+fastapi
+uvicorn
+python-multipart
+websockets
+dotenv
+requests
+jinja2
