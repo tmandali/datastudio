@@ -64,7 +64,7 @@ function WorkspaceContent() {
     const [files, setFiles] = useState<ProjectFile[]>([]);
     const [activeFileId, setActiveFileId] = useState<string>('');
     const API_BASE = (process.env.NEXT_PUBLIC_WEBSOCKET_URL || "ws://localhost:8000").replace("ws://", "http://").replace("wss://", "https://").split('/ws')[0];
-    const WORKSPACES_ROOT = process.env.NEXT_PUBLIC_WORKSPACES_ROOT || ".datastudio/workspaces";
+    const WORKSPACES_ROOT = process.env.NEXT_PUBLIC_WORKSPACES_ROOT || "workspaces";
 
     const fetchFiles = useCallback(async () => {
         try {
@@ -166,7 +166,7 @@ function WorkspaceContent() {
                     name: newName,
                     language: type,
                     content: defaultContent,
-                    path: currentWorkspace ? `.datastudio/${currentWorkspace}` : ""
+                    path: currentWorkspace ? `${WORKSPACES_ROOT}/${currentWorkspace}` : ""
                 })
             });
             const data = await res.json();

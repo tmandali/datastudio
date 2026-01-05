@@ -63,12 +63,15 @@ async def create_workspace(req: dict):
         with open(req_file_path, "w") as f:
             f.write("\n".join(DEFAULT_REQS) + "\n")
 
+        # Determine bin directory based on OS
+        bin_dir = "Scripts" if sys.platform == "win32" else "bin"
+
         print(f"Installing ipykernel in {safe_name}...")
-        pip_cmd = os.path.join(venv_path, "bin", "pip")
+        pip_cmd = os.path.join(venv_path, bin_dir, "pip")
         subprocess.check_call([pip_cmd, "install", "ipykernel", *DEFAULT_REQS])
         
         print(f"Registering kernel for {safe_name}...")
-        python_cmd = os.path.join(venv_path, "bin", "python")
+        python_cmd = os.path.join(venv_path, bin_dir, "python")
         kernel_name = f"ws_{safe_name}"
         display_name = f"Workspace: {safe_name}"
         
@@ -96,7 +99,8 @@ async def create_workspace(req: dict):
 @router.get("/{workspace}/packages")
 async def get_workspace_packages(workspace: str):
     """Get installed packages and versions for a workspace"""
-    venv_python = os.path.join(WORKSPACES_DIR, workspace, ".venv", "bin", "python")
+    bin_dir = "Scripts" if sys.platform == "win32" else "bin"
+    venv_python = os.path.join(WORKSPACES_DIR, workspace, ".venv", bin_dir, "python")
     if not os.path.exists(venv_python):
         return {"error": "Workspace venv not found"}
         

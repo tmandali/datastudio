@@ -2,16 +2,23 @@
 import os
 import sys
 import subprocess
+import shutil
 
 # .datastudio directory path (current dir)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(BASE_DIR)
+WORKSPACES_DIR = os.path.join(PROJECT_ROOT, "workspaces")
 
 def fix_kernels():
-    print(f"Scanning for workspaces in {BASE_DIR}...")
+    print(f"Scanning for workspaces in {WORKSPACES_DIR}...")
     
-    # Iterate over all items in .datastudio
-    for name in os.listdir(BASE_DIR):
-        workspace_path = os.path.join(BASE_DIR, name)
+    if not os.path.exists(WORKSPACES_DIR):
+        print(f"Workspaces directory not found: {WORKSPACES_DIR}")
+        return
+
+    # Iterate over all items in workspaces dir
+    for name in os.listdir(WORKSPACES_DIR):
+        workspace_path = os.path.join(WORKSPACES_DIR, name)
         
         # Skip if not a directory or is a hidden/system dir
         if not os.path.isdir(workspace_path) or name.startswith('.'):
@@ -24,11 +31,28 @@ def fix_kernels():
             
         print(f"Fixing kernel for workspace: {name}")
         
-        # Path to python in the workspace's venv
-        python_cmd = os.path.join(venv_path, "bin", "python")
+        if sys.platform == "win32":
+            python_cmd = os.path.join(venv_path, "Scripts", "python.exe")
+        else:
+            python_cmd = os.path.join(venv_path, "bin", "python")
+
         if not os.path.exists(python_cmd):
-            print(f"  Error: Python interpreter not found at {python_cmd}")
-            continue
+            # Try alternative locations just in case
+            alts = [
+                os.path.join(venv_path, "bin", "python"),
+                os.path.join(venv_path, "Result", "python"),
+                 os.path.join(venv_path, "Scripts", "python")
+            ]
+            found = False
+            for alt in alts:
+                if os.path.exists(alt):
+                    python_cmd = alt
+                    found = True
+                    break
+            
+            if not found:
+                 print(f"  Error: Python interpreter not found at {python_cmd}")
+                 continue
 
         kernel_name = f"ws_{name}"
         display_name = f"Workspace: {name}"

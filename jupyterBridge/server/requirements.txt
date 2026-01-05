@@ -9,3 +9,4 @@ websockets
 dotenv
 requests
 jinja2
+jupyterlab

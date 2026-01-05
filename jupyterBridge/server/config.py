@@ -2,9 +2,9 @@ import os
 import json
 from dotenv import load_dotenv
 
-# Get the directory of the current file (.datastudio)
+# Get the directory of the current file (server)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(BASE_DIR)
+PROJECT_ROOT = os.path.dirname(BASE_DIR) # jupyterBridge
 
 # Load .env
 load_dotenv(os.path.join(BASE_DIR, ".env"))
@@ -13,8 +13,8 @@ JUPYTER_URL = os.getenv("JUPYTER_URL", "http://localhost:8888")
 JUPYTER_TOKEN = os.getenv("JUPYTER_TOKEN", "your_token_here")
 HEADERS = {"Authorization": f"Token {JUPYTER_TOKEN}"}
 
-# Workspaces are now in .datastudio/workspaces
-WORKSPACES_DIR = os.path.join(BASE_DIR, "workspaces")
+# Workspaces are now in ../workspaces
+WORKSPACES_DIR = os.path.join(PROJECT_ROOT, "workspaces")
 
 # requirement loading
 try:
