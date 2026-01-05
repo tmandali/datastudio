@@ -59,7 +59,7 @@ async def create_workspace(req: dict):
         
         print(f"Creating requirements.txt for {safe_name}...")
         req_file_path = os.path.join(ws_path, "requirements.txt")
-        DEFAULT_REQS = ["duckdb", "pandas", "pyarrow", "rich"]
+        DEFAULT_REQS = ["duckdb", "pandas", "pyarrow", "rich", "pyodbc"]
         with open(req_file_path, "w") as f:
             f.write("\n".join(DEFAULT_REQS) + "\n")
 

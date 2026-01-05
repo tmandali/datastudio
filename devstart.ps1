@@ -69,11 +69,11 @@ $BackendCommand = "
         exit 1;
     }
 
-    & `$pythonCmd -m uvicorn main:app --port 8000;
+    & `$pythonCmd -m uvicorn main:app --host 0.0.0.0 --port 8000;
 "
 
 Start-Process powershell -ArgumentList "-NoExit", "-Command", $BackendCommand
-Start-Sleep -Seconds 2
+Start-Sleep -Seconds 2F
 
 # 2. Frontend Baslatma
 Write-Host "[Frontend] Baslatiliyor (Next.js)..." -ForegroundColor Green
@@ -81,13 +81,16 @@ Write-Host "[Frontend] Baslatiliyor (Next.js)..." -ForegroundColor Green
 $FrontendCommand = "
     `$host.UI.RawUI.WindowTitle = 'DataStudio Frontend';
     Set-Location '$RootPath\ui';
-    npm run dev;
+    npm run dev -- -H 0.0.0.0;
 "
 
 Start-Process powershell -ArgumentList "-NoExit", "-Command", $FrontendCommand
 
+$MyIP = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notmatch 'Loopback' -and $_.PrefixOrigin -eq 'Dhcp' -and $_.IPAddress -notmatch '^169\.254' } | Select-Object -First 1).IPAddress
+if ([string]::IsNullOrWhiteSpace($MyIP)) { $MyIP = "localhost" }
+
 Write-Host "=== Sistem Hazir ===" -ForegroundColor Cyan
-Write-Host "Backend: http://localhost:8000"
-Write-Host "Frontend: http://localhost:3000/ui-workspace"
-Write-Host "Jupyter: http://localhost:8888"
+Write-Host "Backend: http://$MyIP:8000"
+Write-Host "Frontend: http://$MyIP:3000/ui-workspace"
+Write-Host "Jupyter: http://$MyIP:8888"
 Write-Host "Cikmak icin acilan diger pencereleri kapatabilirsiniz." -ForegroundColor Red

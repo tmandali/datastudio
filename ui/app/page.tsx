@@ -29,7 +29,9 @@ interface Workspace {
   created_at: number
 }
 
-const API_BASE = (process.env.NEXT_PUBLIC_WEBSOCKET_URL || "ws://localhost:8000").replace("ws://", "http://").replace("wss://", "https://").split('/ws')[0];
+const API_BASE = typeof window !== 'undefined'
+  ? `${window.location.protocol}//${window.location.hostname}:8000`
+  : (process.env.NEXT_PUBLIC_WEBSOCKET_URL || "ws://localhost:8000").replace("ws://", "http://").replace("wss://", "https://").split('/ws')[0];
 
 export default function WorkspaceManager() {
   const router = useRouter()

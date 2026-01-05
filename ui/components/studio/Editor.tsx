@@ -128,7 +128,9 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(({ activeFile, viewM
                 // Helper to get workspace from Ref
                 const getWsName = () => currentWorkspaceRef.current;
 
-                const API_BASE = (process.env.NEXT_PUBLIC_WEBSOCKET_URL || "ws://localhost:8000").replace("ws://", "http://").replace("wss://", "https://").split('/ws')[0];
+                const API_BASE = typeof window !== 'undefined'
+                    ? `${window.location.protocol}//${window.location.hostname}:8000`
+                    : (process.env.NEXT_PUBLIC_WEBSOCKET_URL || "ws://localhost:8000").replace("ws://", "http://").replace("wss://", "https://").split('/ws')[0];
 
                 // Inlay Hints Provider for pip-requirements
                 win.monaco.languages.registerInlayHintsProvider('pip-requirements', {
