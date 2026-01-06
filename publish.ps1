@@ -74,8 +74,9 @@ New-Item -Path $backendPublishDir -ItemType Directory | Out-Null
 Copy-Item -Path "$backendDir\*" -Destination $backendPublishDir -Recurse -Force 
 
 # 5. Create helper scripts properly
-$customConfigContent = @"
-# Robust Jupyter Configuration
+$serverConfigContent = @"
+# Standard Jupyter Server Configuration
+print("--> LOADING JUPYTER SERVER CONFIGURATION <--")
 c = get_config()
 
 # Network
@@ -89,27 +90,16 @@ c.ServerApp.allow_origin = '*'
 c.ServerApp.disable_check_xsrf = True
 c.ServerApp.token = 'datastudio'
 c.IdentityProvider.token = 'datastudio'
-
-# Legacy / Shim Compatibility
-try:
-    c.NotebookApp.ip = '0.0.0.0'
-    c.NotebookApp.port = 8888
-    c.NotebookApp.open_browser = False
-    c.NotebookApp.allow_remote_access = True
-    c.NotebookApp.allow_origin = '*'
-    c.NotebookApp.disable_check_xsrf = True
-    c.NotebookApp.token = 'datastudio'
-except:
-    pass
 "@
 $backendServerDir = Join-Path $backendPublishDir "server"
-Set-Content -Path "$backendServerDir\custom_jupyter_config.py" -Value $customConfigContent
+Set-Content -Path "$backendServerDir\jupyter_server_config.py" -Value $serverConfigContent
 
 $startJupyterContent = @"
 @echo off
 call .venv\Scripts\activate
-echo Starting Jupyter Lab...
-python -m jupyter lab --config custom_jupyter_config.py
+echo Current Directory: %CD%
+echo Starting Jupyter Lab (Auto-config mode)...
+python -m jupyter lab
 "@
 Set-Content -Path "$backendServerDir\start_jupyter.bat" -Value $startJupyterContent
 
