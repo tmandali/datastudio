@@ -76,12 +76,27 @@ Copy-Item -Path "$backendDir\*" -Destination $backendPublishDir -Recurse -Force
 # Cleanup Backend (remove venv, pycache)
 Get-ChildItem -Path $backendPublishDir -Recurse -Include "__pycache__", "*.pyc", "venv", ".git", ".env" | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 
+# Create Jupyter Config
+$jupyterConfigContent = @"
+c.ServerApp.ip = '0.0.0.0'
+c.ServerApp.port = 8888
+c.ServerApp.open_browser = False
+c.ServerApp.allow_remote_access = True
+c.ServerApp.allow_origin = '*'
+c.ServerApp.token = 'datastudio'
+c.ServerApp.disable_check_xsrf = True
+c.IdentityProvider.token = 'datastudio'
+"@
+$backendServerDir = Join-Path $backendPublishDir "server"
+Set-Content -Path "$backendServerDir\jupyter_server_config.py" -Value $jupyterConfigContent
+
 # 5. Create a convenience starter script in publish folder
 $startScriptContent = @"
 @echo off
 set "PUBLISH_ROOT=%~dp0"
 set "UI_DIR=%PUBLISH_ROOT%ui"
 set "BACKEND_DIR=%PUBLISH_ROOT%backend\server"
+set "JUPYTER_TOKEN=datastudio"
 
 echo === Starting DataStudio Production ===
 
@@ -100,7 +115,7 @@ if not exist "%BACKEND_DIR%\.venv" (
 
 :: 1. Start Jupyter
 echo [1/3] Starting Jupyter Lab...
-start "DataStudio Jupyter" /d "%BACKEND_DIR%" cmd /k "call .venv\Scripts\activate && python -m jupyter lab --no-browser --port 8888 --NotebookApp.token='your_token_here' --NotebookApp.allow_origin='*' --ServerApp.ip='0.0.0.0' --ServerApp.allow_remote_access=True"
+start "DataStudio Jupyter" /d "%BACKEND_DIR%" cmd /k "call .venv\Scripts\activate && python -m jupyter lab --config jupyter_server_config.py"
 
 :: 2. Start API Server
 echo [2/3] Starting Backend API...
