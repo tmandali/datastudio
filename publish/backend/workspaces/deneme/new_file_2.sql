@@ -1,3 +1,0 @@
-CREATE TABLE test AS SELECT 1 as id;
-INSERT INTO test VALUES (2);
-SELECT * FROM test;

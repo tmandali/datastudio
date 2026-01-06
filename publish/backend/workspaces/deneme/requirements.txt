@@ -1,6 +1,0 @@
-duckdb
-pyarrow
-rich
-pandas
-pyodbc
-mssql-python
