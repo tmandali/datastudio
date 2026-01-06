@@ -13,10 +13,7 @@ import DataEditor, {
 import "@glideapps/glide-data-grid/dist/index.css"
 import { useTheme } from "next-themes"
 
-interface TableData {
-    columns: string[]
-    data: Record<string, unknown>[]
-}
+import { TableColumn, TableData } from "./types"
 
 interface DataGridProps {
     tableData: TableData
@@ -35,11 +32,26 @@ export function DataGrid({ tableData }: DataGridProps) {
     const [columnWidths, setColumnWidths] = useState<Record<string, number>>({})
 
     const columns = useMemo<GridColumn[]>(() => {
-        const baseCols: GridColumn[] = tableData.columns.map((col) => ({
-            id: col,
-            title: col,
-            width: columnWidths[col] || 150,
-        }))
+        const baseCols: GridColumn[] = tableData.columns.map((col) => {
+            const info = tableData.columnInfo?.find(c => c.name === col);
+            let titlePrefix = "󰉾 "; // Default text-like icon symbol if we don't use real icons
+
+            // Map types to descriptive symbols or icons
+            if (info) {
+                const t = info.type.toLowerCase();
+                if (t.includes("int") || t.includes("float") || t.includes("double") || t.includes("decimal")) titlePrefix = "# ";
+                else if (t.includes("date") || t.includes("time")) titlePrefix = "📅 ";
+                else if (t.includes("bool")) titlePrefix = "✓ ";
+                else if (t.includes("utf8") || t.includes("string")) titlePrefix = "abc ";
+                else titlePrefix = "• ";
+            }
+
+            return {
+                id: col,
+                title: `${titlePrefix}${col}`,
+                width: columnWidths[col] || 150,
+            }
+        })
 
         // Add a silent filler column at the end that grows to fill space
         return [
@@ -51,7 +63,7 @@ export function DataGrid({ tableData }: DataGridProps) {
                 grow: 1,
             }
         ]
-    }, [tableData.columns, columnWidths, isDark])
+    }, [tableData.columns, tableData.columnInfo, columnWidths, isDark])
 
     const getCellContent = useCallback(
         (cell: Item): GridCell => {
@@ -88,13 +100,37 @@ export function DataGrid({ tableData }: DataGridProps) {
                 }
             }
 
-            const stringValue = String(value)
+            let displayData = String(value);
+
+            // Handle Date objects directly or Unix Timestamps
+            if (value instanceof Date) {
+                displayData = value.toLocaleString('tr-TR', {
+                    year: 'numeric', month: '2-digit', day: '2-digit',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit'
+                });
+            } else if (typeof value === 'number' || (typeof value === 'string' && /^\d+$/.test(value) && value.length >= 10)) {
+                const num = Number(value);
+                if (!isNaN(num)) {
+                    const isMillis = num > 1000000000000 && num < 9999999999999;
+                    const isSeconds = num > 1000000000 && num < 9999999999;
+
+                    if (isMillis || isSeconds) {
+                        const date = new Date(isMillis ? num : num * 1000);
+                        if (!isNaN(date.getTime()) && date.getFullYear() > 1990 && date.getFullYear() < 2100) {
+                            displayData = date.toLocaleString('tr-TR', {
+                                year: 'numeric', month: '2-digit', day: '2-digit',
+                                hour: '2-digit', minute: '2-digit', second: '2-digit'
+                            });
+                        }
+                    }
+                }
+            }
 
             return {
                 kind: GridCellKind.Text,
                 allowOverlay: true,
-                displayData: stringValue,
-                data: stringValue,
+                displayData: displayData,
+                data: String(value),
             }
         },
         [tableData, isDark]
@@ -110,14 +146,16 @@ export function DataGrid({ tableData }: DataGridProps) {
             if (colIndex >= tableData.columns.length) return
 
             const columnId = tableData.columns[colIndex]
+            const colInfo = tableData.columnInfo?.find(c => c.name === columnId)
             const canvas = document.createElement("canvas")
             const context = canvas.getContext("2d")
             if (!context) return
 
             context.font = "600 13px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
 
-            // Measure header
-            let maxWidth = context.measureText(columnId).width + 40
+            // Measure header (including prefix)
+            const titlePrefix = columns[colIndex]?.title.split(columnId)[0] || ""
+            let maxWidth = context.measureText(titlePrefix + columnId).width + 40
 
             context.font = "13px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
 

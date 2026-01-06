@@ -27,8 +27,14 @@ export interface KernelMessage {
     content?: unknown;
 }
 
+export interface TableColumn {
+    name: string;
+    type: string;
+}
+
 export interface TableData {
     columns: string[];
+    columnInfo?: TableColumn[];
     data: Record<string, unknown>[];
     executionTime?: string;
 }

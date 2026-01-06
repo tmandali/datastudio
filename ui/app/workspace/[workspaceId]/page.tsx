@@ -336,13 +336,21 @@ function WorkspaceContent() {
                         const table = tableFromIPC(new Uint8Array(buffer));
 
                         const columns = table.schema.fields.map(f => f.name);
+                        const columnInfo = table.schema.fields.map(f => ({
+                            name: f.name,
+                            type: f.type.toString().toLowerCase()
+                        }));
+
                         const data: Record<string, unknown>[] = [];
                         for (let i = 0; i < table.numRows; i++) {
                             const row: Record<string, unknown> = {};
                             const arrowRow = table.get(i);
                             if (arrowRow) {
                                 columns.forEach(col => {
-                                    row[col] = String(arrowRow[col]);
+                                    const val = arrowRow[col];
+                                    // BigInt değerleri hassasiyet kaybı olmaması için string'e çeviriyoruz
+                                    // Diğer tipleri (null dahil) olduğu gibi bırakıyoruz
+                                    row[col] = typeof val === 'bigint' ? val.toString() : val;
                                 });
                                 data.push(row);
                             }
@@ -359,7 +367,7 @@ function WorkspaceContent() {
                         setActiveTable(prev => {
                             // Eğer önceki veri yoksa veya kolon yapısı değiştiyse yeni tablo oluştur
                             if (!prev || JSON.stringify(prev.columns) !== JSON.stringify(columns)) {
-                                return { columns, data, executionTime: formattedTime };
+                                return { columns, columnInfo, data, executionTime: formattedTime };
                             }
                             // Aynı yapıdaysa veriyi sona ekle (Streaming/Append)
                             return {
