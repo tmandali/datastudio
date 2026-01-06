@@ -3,7 +3,7 @@ import os
 from os import getenv
 from time import sleep
 from argparse import ArgumentParser
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 import pyodbc  # SQL bağlantısı için
 from pyodbc import Connection, Cursor, connect
 from rich.console import Console
@@ -15,8 +15,8 @@ _connection = None
 def get_connection() -> Connection:
    global _connection
    if not _connection:
-       load_dotenv()
-       orig_conn_str = getenv("SQL_CONNECTION_STRING")
+    #    load_dotenv()
+       orig_conn_str = "{{SQL_CONNECTION_STRING}}"
        # Add timeout to prevent hanging
        conn_str_with_timeout = f"{orig_conn_str};LoginTimeout=5"
        _connection = connect(conn_str_with_timeout)  # type: ignore
@@ -90,12 +90,12 @@ if __name__ == "__main__":
              if os.path.exists("jupyterBridge/.env"): env_path = "jupyterBridge/.env"
              elif os.path.exists("../jupyterBridge/.env"): env_path = "../jupyterBridge/.env"
         
-        load_dotenv(env_path)
+        # load_dotenv(env_path)
         
-        if not getenv("SQL_CONNECTION_STRING"):
-            print("ERROR: SQL_CONNECTION_STRING not found in environment variables.", flush=True)
-        else:
-            main()
+        # if not getenv("SQL_CONNECTION_STRING"):
+        #     print("ERROR: SQL_CONNECTION_STRING not found in environment variables.", flush=True)
+        # else:
+        main()
     except Exception as e:
         print(f"CRITICAL ERROR: {e}", flush=True)
         import traceback
