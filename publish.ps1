@@ -74,13 +74,43 @@ New-Item -Path $backendPublishDir -ItemType Directory | Out-Null
 Copy-Item -Path "$backendDir\*" -Destination $backendPublishDir -Recurse -Force 
 
 # 5. Create helper scripts properly
+$customConfigContent = @"
+# Robust Jupyter Configuration
+c = get_config()
+
+# Network
+c.ServerApp.ip = '0.0.0.0'
+c.ServerApp.port = 8888
+c.ServerApp.open_browser = False
+
+# Security
+c.ServerApp.allow_remote_access = True
+c.ServerApp.allow_origin = '*'
+c.ServerApp.disable_check_xsrf = True
+c.ServerApp.token = 'datastudio'
+c.IdentityProvider.token = 'datastudio'
+
+# Legacy / Shim Compatibility
+try:
+    c.NotebookApp.ip = '0.0.0.0'
+    c.NotebookApp.port = 8888
+    c.NotebookApp.open_browser = False
+    c.NotebookApp.allow_remote_access = True
+    c.NotebookApp.allow_origin = '*'
+    c.NotebookApp.disable_check_xsrf = True
+    c.NotebookApp.token = 'datastudio'
+except:
+    pass
+"@
+$backendServerDir = Join-Path $backendPublishDir "server"
+Set-Content -Path "$backendServerDir\custom_jupyter_config.py" -Value $customConfigContent
+
 $startJupyterContent = @"
 @echo off
 call .venv\Scripts\activate
 echo Starting Jupyter Lab...
-python -m jupyter lab --no-browser --port 8888 --ip=0.0.0.0 --ServerApp.token=datastudio --ServerApp.allow_origin=* --ServerApp.allow_remote_access=True --ServerApp.disable_check_xsrf=True
+python -m jupyter lab --config custom_jupyter_config.py
 "@
-$backendServerDir = Join-Path $backendPublishDir "server"
 Set-Content -Path "$backendServerDir\start_jupyter.bat" -Value $startJupyterContent
 
 # 6. Create main starter script
