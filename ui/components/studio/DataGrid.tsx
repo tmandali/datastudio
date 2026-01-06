@@ -114,12 +114,12 @@ export function DataGrid({ tableData }: DataGridProps) {
             const context = canvas.getContext("2d")
             if (!context) return
 
-            context.font = "600 12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
+            context.font = "600 13px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
 
             // Measure header
             let maxWidth = context.measureText(columnId).width + 40
 
-            context.font = "12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
+            context.font = "13px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
 
             // Measure data samples
             const sampleSize = Math.min(tableData.data.length, 50)
@@ -159,8 +159,8 @@ export function DataGrid({ tableData }: DataGridProps) {
             fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
             textHeader: isDark ? "#e5e5e5" : "#404040",
             headerIconColor: isDark ? "#a3a3a3" : "#737373",
-            headerFontStyle: "600 12px",
-            baseFontStyle: "12px",
+            headerFontStyle: "600 13px",
+            baseFontStyle: "13px",
         }
     }, [isDark])
 

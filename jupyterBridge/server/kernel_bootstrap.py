@@ -116,7 +116,7 @@ try:
             # 2. Standart Cursor (mssql_python, sqlite3 vb.)
             elif hasattr(obj, 'fetchmany') and hasattr(obj, 'description'):
                 cursor = obj
-                col_names = [col[0].lower() for col in cursor.description]
+                col_names = [col[0] for col in cursor.description]
                 
                 while True:
                     rows = cursor.fetchmany(batch_size)
