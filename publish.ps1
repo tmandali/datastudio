@@ -73,24 +73,17 @@ New-Item -Path $backendPublishDir -ItemType Directory | Out-Null
 
 Copy-Item -Path "$backendDir\*" -Destination $backendPublishDir -Recurse -Force 
 
-# Cleanup Backend (remove venv, pycache)
-Get-ChildItem -Path $backendPublishDir -Recurse -Include "__pycache__", "*.pyc", "venv", ".git", ".env" | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-
-# Create Jupyter Config
-$jupyterConfigContent = @"
-c.ServerApp.ip = '0.0.0.0'
-c.ServerApp.port = 8888
-c.ServerApp.open_browser = False
-c.ServerApp.allow_remote_access = True
-c.ServerApp.allow_origin = '*'
-c.ServerApp.token = 'datastudio'
-c.ServerApp.disable_check_xsrf = True
-c.IdentityProvider.token = 'datastudio'
+# 5. Create helper scripts properly
+$startJupyterContent = @"
+@echo off
+call .venv\Scripts\activate
+echo Starting Jupyter Lab...
+python -m jupyter lab --no-browser --port 8888 --ip=0.0.0.0 --ServerApp.token=datastudio --ServerApp.allow_origin=* --ServerApp.allow_remote_access=True --ServerApp.disable_check_xsrf=True
 "@
 $backendServerDir = Join-Path $backendPublishDir "server"
-Set-Content -Path "$backendServerDir\jupyter_server_config.py" -Value $jupyterConfigContent
+Set-Content -Path "$backendServerDir\start_jupyter.bat" -Value $startJupyterContent
 
-# 5. Create a convenience starter script in publish folder
+# 6. Create main starter script
 $startScriptContent = @"
 @echo off
 set "PUBLISH_ROOT=%~dp0"
@@ -115,7 +108,7 @@ if not exist "%BACKEND_DIR%\.venv" (
 
 :: 1. Start Jupyter
 echo [1/3] Starting Jupyter Lab...
-start "DataStudio Jupyter" /d "%BACKEND_DIR%" cmd /k "call .venv\Scripts\activate && python -m jupyter lab --config jupyter_server_config.py"
+start "DataStudio Jupyter" /d "%BACKEND_DIR%" cmd /k "call start_jupyter.bat"
 
 :: 2. Start API Server
 echo [2/3] Starting Backend API...
