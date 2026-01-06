@@ -1,5 +1,5 @@
 import mssql_python
-connection_string = "Server=localhost,1433;Database=testDb;UID=sa;PWD=Passw@rd;TrustServerCertificate=yes;Authentication=SqlPassword"
+connection_string = "Server=127.0.0.1,1433;Database=testDb;UID=sa;PWD=Passw@rd;TrustServerCertificate=yes;Authentication=SqlPassword"
 # conn_str = Server=<your_server_name>;Database=<your_database_name>;UID=<your_user_id>;PWD=<your_password>;Trusted_Connection=yes;Encrypt=yes;TrustServerCertificate=yes;Authentication=<SqlPassword>;
 
 # conn.setencoding(encoding='utf-8')
