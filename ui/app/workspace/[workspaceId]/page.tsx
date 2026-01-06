@@ -348,9 +348,18 @@ function WorkspaceContent() {
                             if (arrowRow) {
                                 columns.forEach(col => {
                                     const val = arrowRow[col];
-                                    // BigInt değerleri hassasiyet kaybı olmaması için string'e çeviriyoruz
-                                    // Diğer tipleri (null dahil) olduğu gibi bırakıyoruz
-                                    row[col] = typeof val === 'bigint' ? val.toString() : val;
+                                    if (typeof val === 'bigint') {
+                                        row[col] = val.toString();
+                                    } else if (val instanceof Uint8Array) {
+                                        // Binary veriyi (rowversion gibi) hex string'e çevir
+                                        const hex = Array.from(val)
+                                            .map(b => b.toString(16).padStart(2, '0'))
+                                            .join('')
+                                            .toUpperCase();
+                                        row[col] = `0x${hex}`;
+                                    } else {
+                                        row[col] = val;
+                                    }
                                 });
                                 data.push(row);
                             }
