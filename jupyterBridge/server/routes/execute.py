@@ -6,6 +6,7 @@ import asyncio
 import datetime
 import requests
 import jinja2
+from dotenv import dotenv_values
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from config import JUPYTER_URL, JUPYTER_TOKEN, HEADERS, WORKSPACES_DIR, BOOTSTRAP_CODE, get_bootstrap_code
 
@@ -122,11 +123,23 @@ async def execute_code(websocket: WebSocket, workspace: str = None):
 
             # Jinja Processing
             try:
+                # Start with system env vars
+                env_vars = dict(os.environ)
+                
+                # If workspace is defined, load its .env file
+                if workspace:
+                    ws_env_path = os.path.join(WORKSPACES_DIR, workspace, ".env")
+                    if os.path.exists(ws_env_path):
+                        ws_vars = dotenv_values(ws_env_path)
+                        if ws_vars:
+                            # Filter None values just in case
+                            env_vars.update({k: v for k, v in ws_vars.items() if v is not None})
+
                 template_context = {
                     "user_id": os.getenv("USER_ID", os.getenv("USER", "system")),
                     "workspace": workspace,
                     "date": datetime.datetime.now().strftime("%Y-%m-%d"),
-                    "env": dict(os.environ)
+                    "env": env_vars
                 }
                 template = jinja2.Template(raw_code)
                 final_code = template.render(template_context)

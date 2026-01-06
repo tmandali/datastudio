@@ -3,16 +3,17 @@ import pyodbc
 # 1. Bağlantı Bilgilerini Tanımlama
 server = "testoltp.lcwaikiki.local"
 database = "retail"
-driver = "ODBC Driver 18 for SQL Server"
 
 try:
     # 2. Bağlantıyı Kurma
     connection_string = (
-        f"DRIVER={{{driver}}};"
+        "DRIVER={ODBC Driver 18 for SQL Server};"
         f"SERVER={server};"
         f"DATABASE={database};"
-        "Trusted_Connection=yes;"
         "TrustServerCertificate=yes;"
+        "UID={{env.SQLUSER}};"
+        "PWD={{env.SQLPASSWORD}};"
+        "Encrypt=no;"
     )
     
     conn = pyodbc.connect(connection_string)
@@ -24,7 +25,7 @@ try:
     cursor = conn.cursor()
 
     # 3. Sorgu Çalıştırma
-    sql_query = "SELECT * FROM tb_Depo (NOLOCK)"
+    sql_query = "SELECT top 100000 * FROM tb_Urun (NOLOCK)"
     cursor.execute(sql_query)
 
     # stream function is likely explicitly imported or available in the user's environment context. 
