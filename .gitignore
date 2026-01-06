@@ -18,3 +18,4 @@ dist/
 # Backend specific
 jupyterBridge/.env
 jupyterBridge/.venv
+publish/
